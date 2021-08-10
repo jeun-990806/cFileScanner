@@ -9,14 +9,14 @@ sys.setrecursionlimit(10000)
 def getFileList(path):
     if not os.path.isdir(path):
         print('getFileList(): there is no such directory (' + path + ')')
-        return
+        return []
     return [file for file in os.listdir(path) if os.path.isfile(path + file)]
 
 
 def getDirectoryList(path):
     if not os.path.isdir(path):
         print('getDirectoryList(): there is no such directory (' + path + ')')
-        return
+        return []
     return [directory + '/' for directory in os.listdir(path) if os.path.isdir(path + directory)]
 
 

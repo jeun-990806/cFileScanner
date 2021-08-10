@@ -6,8 +6,8 @@ import tools
 
 
 class HeaderFileScanner:
-    rootPath = 'header_files/'
-    __defaultDestination = ''
+    rootPath = '.'
+    __defaultDestination = '.'
     __directoryList = []
 
     targetHeaderFiles = []
@@ -28,24 +28,27 @@ class HeaderFileScanner:
     def __init__(self, path=None, targetHeaderFiles=None):
         if path is not None:
             self.rootPath = path
-
+            if self.rootPath != '.' and not self.rootPath.endswith('/'):
+                self.rootPath += '/'
         if targetHeaderFiles is not None:
             self.targetHeaderFiles = targetHeaderFiles
         else:
             # find all targeted directories
-            self.directoryList = [self.rootPath]
+            self.__directoryList = [self.rootPath]
             currentDirIndex = 0
             while True:
-                if currentDirIndex >= len(self.directoryList):
+                if currentDirIndex >= len(self.__directoryList):
                     break
-                currentDir = self.directoryList[currentDirIndex]
-                newDirectoryList = [currentDir + directory for directory in fileManagement.getDirectoryList(currentDir)]
-                self.directoryList += newDirectoryList
+                currentDir = self.__directoryList[currentDirIndex]
+                newDirectoryList = [currentDir + directory
+                                    for directory in fileManagement.getDirectoryList(currentDir)]
+                self.__directoryList += newDirectoryList
                 currentDirIndex += 1
 
             # find all targeted header files
-            for directory in self.directoryList:
-                self.targetHeaderFiles += [directory + fileName for fileName in fileManagement.getFileList(directory)]
+            for directory in self.__directoryList:
+                self.targetHeaderFiles += [directory + fileName
+                                           for fileName in fileManagement.getFileList(directory)]
 
     def addIncludedHeaderFiles(self):
         for header in self.targetHeaderFiles:
@@ -68,16 +71,18 @@ class HeaderFileScanner:
             fileContents = fileManagement.openFile(header)
             if fileContents is None:
                 self.__notScannedHeaderFiles.append(header)
-                continue
-            for line in fileManagement.openFile(header):
-                for statement in re.findall(self.__defineStatementRE, line):
-                    statement = re.sub(self.__definePartRE, '', statement).strip()
-                    symbolicConstant = re.findall(self.__symbolicConstantRE, statement)
-                    if header not in self.__symbolicConstantsData.keys():
-                        self.__symbolicConstantsData[header] = []
-                    self.__symbolicConstantsData[header] += symbolicConstant
-            self.__scannedHeaderFiles.append(header)
-            fileManagement.saveData(self.__symbolicConstantsData[header], destination + header[header.rfind('/') + 1:header.rfind('.')] + '.list')
+            else:
+                for line in fileManagement.openFile(header):
+                    for statement in re.findall(self.__defineStatementRE, line):
+                        statement = re.sub(self.__definePartRE, '', statement).strip()
+                        symbolicConstant = re.findall(self.__symbolicConstantRE, statement)
+                        if header not in self.__symbolicConstantsData.keys():
+                            self.__symbolicConstantsData[header] = []
+                        self.__symbolicConstantsData[header] += symbolicConstant
+                self.__scannedHeaderFiles.append(header)
+        for header in self.__symbolicConstantsData.keys():
+            resultFileName = header[header.rfind('/') + 1:header.rfind('.')] + '.list'
+            fileManagement.saveData(self.__symbolicConstantsData[header], destination + resultFileName)
 
     def scanStructures(self, destination=None):
         if destination is None:
@@ -87,7 +92,8 @@ class HeaderFileScanner:
                 destination += '/'
         for header in self.targetHeaderFiles:
             print('scanStructures(): scan ' + header)
-            for structure in re.findall(self.__structureRE, tools.removeComments(' '.join(fileManagement.openFile(header)))):
+            for structure in re.findall(self.__structureRE,
+                                        tools.removeComments(' '.join(fileManagement.openFile(header)))):
                 # structure name
                 if structure.replace('\n', '').startswith('typedef'):
                     structureName = structure.split('}')[-1].replace(';', '').strip().replace(' ', '_')
@@ -98,5 +104,6 @@ class HeaderFileScanner:
                     continue
                 # fields data
                 fields = [field.replace('\t', ' ') for field in re.findall(self.__fieldVariableRE, structure)]
-                self.__structureData[structureName] = [(field.split(' ')[0], field.split(' ')[1]) for field in fields if len(field.split(' ')) >= 2]
+                self.__structureData[structureName] = [(field.split(' ')[0], field.split(' ')[1])
+                                                       for field in fields if len(field.split(' ')) >= 2]
                 fileManagement.saveData(self.__structureData[structureName], destination + structureName + '.list')
