@@ -2,6 +2,7 @@ import os
 import pickle
 import csv
 import sys
+
 sys.setrecursionlimit(10000)
 
 
@@ -22,11 +23,15 @@ def getDirectoryList(path):
 def openFile(path):
     if os.path.isfile(path):
         f = open(path, 'r')
-        lines = f.readlines()
+        try:
+            lines = f.readlines()
+        except:
+            print('openFile(): cannot open file (' + path + ')')
+            lines = None
         f.close()
         return lines
     else:
-        print('openFile(): there isn no such file (' + path + ')')
+        print('openFile(): there is no such file (' + path + ')')
         return []
 
 

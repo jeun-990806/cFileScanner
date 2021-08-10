@@ -4,25 +4,26 @@ import re
 import fileManagement
 import tools
 
-headerFilePath = 'header_files/'
-
 
 class HeaderFileScanner:
-    rootPath = ''
-    defaultRootPath = ''
-    directoryList = []
+    rootPath = 'header_files/'
+    __defaultDestination = ''
+    __directoryList = []
 
     targetHeaderFiles = []
-    notScannedHeaderFiles = []
-    scannedHeaderFiles = []
+    __notScannedHeaderFiles = []
+    __scannedHeaderFiles = []
 
-    symbolicConstantsData = {}
-    structureData = {}
+    __symbolicConstantsData = {}
+    __structureData = {}
 
-    defineStatementRE = '#[\s]*(?:define|DEFINE)[^\n]*'
-    definePartRE = '#[\s]*(?:define|DEFINE)[\s]*'
-    symbolicConstantRE = '[A-Z]+[A-Z_0-9]+'
-    headerFileRE = '<[\S]+\.h>'
+    __defineStatementRE = '#[\s]*(?:define|DEFINE)[^\n]*'
+    __definePartRE = '#[\s]*(?:define|DEFINE)[\s]*'
+    __symbolicConstantRE = '[A-Z]+[A-Z_0-9]+'
+    __headerFileRE = '<[\S]+\.h>'
+    __structureRE = '(?:typedef |)struct(?: [a-zA-Z0-9_]*|)(?:\{[^}]*\}|)[^;]*;'
+    __fieldVariableRE = '[a-zA-Z_][a-zA-Z0-9_]+[\s]+[a-zA-Z_][a-zA-Z0-9_]+;'
+    __structureNameRE = '[a-zA-Z0-9_]+'
 
     def __init__(self, path=None, targetHeaderFiles=None):
         if path is not None:
@@ -48,7 +49,7 @@ class HeaderFileScanner:
 
     def addIncludedHeaderFiles(self):
         for header in self.targetHeaderFiles:
-            for included in re.findall(self.headerFileRE, ''.join(fileManagement.openFile(header))):
+            for included in re.findall(self.__headerFileRE, ''.join(fileManagement.openFile(header))):
                 included = self.rootPath + included.replace('<', '').replace('>', '')
                 if os.path.isfile(included):
                     if included not in self.targetHeaderFiles:
@@ -56,53 +57,46 @@ class HeaderFileScanner:
                 else:
                     print('addIncludeHeaderFiles(): there is no ' + included)
 
-    def scanSymbolicConstants(self):
+    def scanSymbolicConstants(self, destination=None):
+        if destination is None:
+            destination = self.__defaultDestination
+        else:
+            if not destination.endswith('/'):
+                destination += '/'
         for header in self.targetHeaderFiles:
             print('scanSymbolicConstants(): scan ' + header)
+            fileContents = fileManagement.openFile(header)
+            if fileContents is None:
+                self.__notScannedHeaderFiles.append(header)
+                continue
             for line in fileManagement.openFile(header):
-                for statement in re.findall(self.defineStatementRE, line):
-                    statement = re.sub(self.definePartRE, '', statement).strip()
-                    symbolicConstant = re.findall(self.symbolicConstantRE, statement)
-                    if header not in self.symbolicConstantsData.keys():
-                        self.symbolicConstantsData[header] = []
-                    self.symbolicConstantsData[header] += symbolicConstant
+                for statement in re.findall(self.__defineStatementRE, line):
+                    statement = re.sub(self.__definePartRE, '', statement).strip()
+                    symbolicConstant = re.findall(self.__symbolicConstantRE, statement)
+                    if header not in self.__symbolicConstantsData.keys():
+                        self.__symbolicConstantsData[header] = []
+                    self.__symbolicConstantsData[header] += symbolicConstant
+            self.__scannedHeaderFiles.append(header)
+            fileManagement.saveData(self.__symbolicConstantsData[header], destination + header[header.rfind('/') + 1:header.rfind('.')] + '.list')
 
-    '''    def getStructureList(contents):
-        structureRE = '(?:\ntypedef |\n)struct[^{;]*(?:\{[^}]*\}|)[^;]*;'
-        fullText = ''
-        for content in contents:
-            fullText += content
-        return re.findall(structureRE, tools.removeComments(fullText))
-
-    def getStructureName(struct):
-        if struct.replace('\n', '').startswith('typedef'):
-            return struct.split('}')[-1].replace(';', '').strip()
+    def scanStructures(self, destination=None):
+        if destination is None:
+            destination = self.__defaultDestination
         else:
-            return struct.split('{')[0].replace('\n', '').replace(';', '').strip()
-
-    def getStructureContents(struct):
-        structContentRE = '{[\S\s]+};'
-        result = re.findall(structContentRE, struct)
-        if len(result) != 0:
-            return result[0]
-
-    def getStructureDataNameList(struct):
-        fieldRE = '[a-zA-Z0-9][^;]+;'
-        if getStructureContents(struct) is not None:
-            return [getFieldData(field) for field in re.findall(fieldRE, getStructureContents(struct))
-                    if getFieldData(field) is not None]
-
-    def getFieldData(field):
-        field = field.replace('\t', ' ')
-        if not checkFieldType(field):
-            fieldName = field[field.rfind(' ') + 1:].replace(';', '')
-            fieldType = field[:field.rfind(' ')]
-            return fieldType, fieldName
-
-    def checkFieldType(field):
-        wrongCase = '~!@#$%^&+=|\\\?\[\]{}():;\'"`<>.'
-        argumentsRE = '[(](?:[(][^0-9' + wrongCase + '][^;]+[)]|[^' + wrongCase + '])*[)]'
-        if len(re.findall(argumentsRE, field)) == 0:
-            return False
-        else:
-            return True'''
+            if not destination.endswith('/'):
+                destination += '/'
+        for header in self.targetHeaderFiles:
+            print('scanStructures(): scan ' + header)
+            for structure in re.findall(self.__structureRE, tools.removeComments(' '.join(fileManagement.openFile(header)))):
+                # structure name
+                if structure.replace('\n', '').startswith('typedef'):
+                    structureName = structure.split('}')[-1].replace(';', '').strip().replace(' ', '_')
+                else:
+                    structureName = structure.split('{')[0].replace('\n', '').replace(';', '').strip().replace(' ', '_')
+                # check structure name
+                if re.fullmatch(self.__structureNameRE, structureName) is None:
+                    continue
+                # fields data
+                fields = [field.replace('\t', ' ') for field in re.findall(self.__fieldVariableRE, structure)]
+                self.__structureData[structureName] = [(field.split(' ')[0], field.split(' ')[1]) for field in fields if len(field.split(' ')) >= 2]
+                fileManagement.saveData(self.__structureData[structureName], destination + structureName + '.list')
