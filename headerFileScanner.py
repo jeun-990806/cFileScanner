@@ -4,7 +4,7 @@ import re
 import fileManagement
 import tools
 
-#yy
+
 class HeaderFileScanner:
     rootPath = '.'
     __defaultDestination = '.'
