@@ -81,7 +81,7 @@ class HeaderFileScanner:
                         self.__symbolicConstantsData[header] += symbolicConstant
                 self.__scannedHeaderFiles.append(header)
         for header in self.__symbolicConstantsData.keys():
-            resultFileName = header[header.rfind('/') + 1:header.rfind('.')] + '.list'
+            resultFileName = header[header.rfind('/') + 1:] + '.list'
             fileManagement.saveData(self.__symbolicConstantsData[header], destination + resultFileName)
 
     def scanStructures(self, destination=None):
