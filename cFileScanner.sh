@@ -1,12 +1,12 @@
 #!/bin/sh
 
-SOURCE_PATH='.'
+SOURCE_PATH='header_files/'
 DESTINATION_PATH='.'
 
 COMMAND="import headerFileScanner;"
 
 if [ $# -eq 0 ] ; then
-	echo -e "opt:\t-sc=[DESTINATION]\tscan symbolic constants and save to [DESTINATION].\n\t-st=[DESTINATION]\tscan structures and save to [DESTINATION].\n\t-set=[SOURCE]\t\tset the path where the header files exist to [SOURCE] (default: ${PWD##*/})"
+	echo -e "opt:\t-sc=[DESTINATION]\tscan symbolic constants and save to [DESTINATION].\n\t-st=[DESTINATION]\tscan structures and save to [DESTINATION].\n\t-set=[SOURCE]\t\tset the path where the header files exist to [SOURCE] (default: $SOURCE_PATH)"
 	echo -e "(the amount of result files can be huge. so it is recommended that you enter the destination path.)" 
 
 else
