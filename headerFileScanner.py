@@ -21,8 +21,8 @@ class HeaderFileScanner:
     __definePartRE = '#[\s]*(?:define|DEFINE)[\s]*'
     __symbolicConstantRE = '[A-Z]+[A-Z_0-9]+'
     __headerFileRE = '<[\S]+\.h>'
-    __structureRE = '(?:typedef |)struct(?: [a-zA-Z0-9_]*|)(?:\{[^}]*\}|)[^;]*;'
-    __fieldVariableRE = '[a-zA-Z_][a-zA-Z0-9_]+[\s]+[a-zA-Z_][a-zA-Z0-9_]+;'
+    __structureRE = '(?:typedef |)struct(?: [a-zA-Z0-9_]*|)\{[^}()]*\}[a-zA-Z0-9_\s]*;'
+    __fieldVariableRE = '[a-zA-Z_][a-zA-Z0-9_*\s]+[\s]+[a-zA-Z_*][a-zA-Z0-9_]+(?:\[[0-9]+\]|)(?=;)'
     __structureNameRE = '[a-zA-Z0-9_]+'
 
     def __init__(self, path=None, targetHeaderFiles=None):
@@ -103,7 +103,7 @@ class HeaderFileScanner:
                 if re.fullmatch(self.__structureNameRE, structureName) is None:
                     continue
                 # fields data
-                fields = [field.replace('\t', ' ') for field in re.findall(self.__fieldVariableRE, structure)]
-                self.__structureData[structureName] = [(field.split(' ')[0], field.split(' ')[1])
+                fields = [re.sub('[\s]+', ' ', field) for field in re.findall(self.__fieldVariableRE, structure)]
+                self.__structureData[structureName] = [(field[:field.rfind(' ')], field[field.rfind(' ') + 1:])
                                                        for field in fields if len(field.split(' ')) >= 2]
                 fileManagement.saveData(self.__structureData[structureName], destination + structureName + '.list')
